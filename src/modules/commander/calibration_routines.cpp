@@ -757,7 +757,8 @@ calibrate_return calibrate_from_orientation(orb_advert_t *mavlink_log_pub,
 			orientation_failures++;
 			set_tune(TONE_NOTIFY_NEGATIVE_TUNE);
 			calibration_log_info(mavlink_log_pub, "[cal] %s side already completed", detect_orientation_str(orient));
-			usleep(20000);
+			//usleep(20000);
+			sleep(300); // additional time, 5 min
 			continue;
 		}
 
