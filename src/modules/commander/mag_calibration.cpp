@@ -511,7 +511,7 @@ static calibrate_return mag_calibration_worker(detect_orientation_return orienta
 
 		worker_data->done_count++;
 		//usleep(20000);
-		sleep(300); // next position timout, 5 min
+		sleep(180); // next position timout, 3 min
 		calibration_log_info(worker_data->mavlink_log_pub, CAL_QGC_PROGRESS_MSG, progress_percentage(worker_data));
 	}
 
