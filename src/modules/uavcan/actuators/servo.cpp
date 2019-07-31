@@ -66,10 +66,7 @@ int UavcanServoController::Init()
 	auto isOk = 0;
 
 	/*
-     * We defined two data types, but only one of them has a default Data Type ID (DTID):
-     *  - sirius_cybernetics_corporation.GetCurrentTime               - default DTID 242
-     *  - sirius_cybernetics_corporation.PerformLinearLeastSquaresFit - default DTID is not set
-     * The first one can be used as is; the second one needs to be registered first.
+     * We defined Data Type ID (DTID) for uavcan::equipment::actuator::Command
      */
     isOk =
         uavcan::GlobalDataTypeRegistry::instance().registerDataType<uavcan::equipment::actuator::Command>(1012); // DTID = 1012
@@ -80,9 +77,29 @@ int UavcanServoController::Init()
 	 * - Data Type Registry has been frozen and can't be modified anymore
 	 */
     if (isOk != uavcan::GlobalDataTypeRegistry::RegistrationResultOk)
+	{
         errx(1, "Failed to register the data type: " + isOk);
+		return isOk;
+	}
 
-	return isOk;
+
+
+	// preflight state subscription
+	int res = this->preflightStateSubscriber.start(StatusCbBinder(this, &UavcanEscController::PreflightStateCallback));
+
+	if (res < 0)
+	{
+		warnx("Preflight state sub failed %i", res);
+		return res;
+	}
+
+	// Preflight state will be relayed from UAVCAN bus into ORB at this rate
+	this->orbTimer.setCallback(TimerCbBinder(this, &UavcanEscController::OrbTimerCallback));
+	this->orbTimer.startPeriodic(uavcan::MonotonicDuration::fromMSec(1000 / ESC_STATUS_UPDATE_RATE_HZ));
+
+
+
+	return 0;
 }
 
 void UavcanServoController::UpdateOutputs(float *outputs, unsigned num_outputs)
@@ -160,4 +177,17 @@ void UavcanServoController::UpdateIgnition(bool isWork)
 	message.command_type	= (uint8_t)Commands::Ignition;
 
 	(void)this->commandPublisher.broadcast(message);
+}
+
+void UavcanServoController::PreflightStateCallback(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state> &msg)
+{
+	this->isPreflightOn = msg.status;
+}
+
+void UavcanServoController::OrbTimerCallback(const uavcan::TimerEvent &event)
+{
+	if (this->preflightStatePub != nullptr)
+		(void)orb_publish(ORB_ID(preflight_state), this->preflightStatePub, &this->isPreflightOn);
+	else
+		this->preflightStatePub = orb_advertise(ORB_ID(preflight_state), &this->isPreflightOn);
 }

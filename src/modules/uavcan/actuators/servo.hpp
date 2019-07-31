@@ -42,6 +42,7 @@
 #include <uavcan/uavcan.hpp>
 #include <uavcan/equipment/actuator/ArrayCommand.hpp>
 #include <uavcan/equipment/actuator/Command.hpp>
+#include <uORB/topics/preflight_state.h>
 #include <perf/perf_counter.h>
 
 class UavcanServoController
@@ -63,19 +64,34 @@ public:
 	void UpdateIgnition(bool isWork);
 
 private:
+	/*
+	 * Preflight state message reception will be reported via this callback.
+	 */
+	void PreflightStateCallback(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state> &msg);
+
+	/*
+	 * Published can messages to ORB from this callback (fixed rate) if it's needed.
+	 */
+	void OrbTimerCallback(const uavcan::TimerEvent &event);
+	
 	static constexpr unsigned MAX_RATE_HZ                       = 100;	///< XXX make this configurable
+	static constexpr unsigned PREFLIGHT_STATE_UPDATE_RATE_HZ 	= 10;
 	static constexpr unsigned UAVCAN_COMMAND_TRANSFER_PRIORITY  = 5;	///< 0..31, inclusive, 0 - highest, 31 - lowest
 
+	bool isPreflightOn											= false;
+	orb_advert_t preflightStatePub 								= nullptr;
 	orb_advert_t actuatorOutputsPub                             = nullptr;
 
 	/*
 	 * libuavcan related things
 	 */
-	uavcan::INode								                    &_node;
-	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> 	arrayCommandPublisher;
-	uavcan::Publisher<uavcan::equipment::actuator::Command>       	commandPublisher;
-	uavcan::MonotonicTime							                previousPWMPublication;   		///< rate limiting
-	uavcan::MonotonicTime							                previousIgnitionPublication;   	///< rate limiting
+	uavcan::INode								                    				&_node;
+	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> 					arrayCommandPublisher;
+	uavcan::Publisher<uavcan::equipment::actuator::Command>       					commandPublisher;
+	uavcan::Subscriber<uavcan::equipment::big_one::Preflight_state, StatusCbBinder>	preflightStateSubscriber;
+	uavcan::MonotonicTime							                				previousPWMPublication;   		///< rate limiting
+	uavcan::MonotonicTime							                				previousIgnitionPublication;   	///< rate limiting
+	uavcan::TimerEventForwarder<TimerCbBinder>										orbTimer;
 
 	/*
 	 * Perf counters
