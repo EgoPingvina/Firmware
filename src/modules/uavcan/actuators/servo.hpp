@@ -42,6 +42,7 @@
 #include <uavcan/uavcan.hpp>
 #include <uavcan/equipment/actuator/ArrayCommand.hpp>
 #include <uavcan/equipment/actuator/Command.hpp>
+#include <uavcan/equipment/big_one/Preflight_state.hpp>
 #include <uORB/topics/preflight_state.h>
 #include <perf/perf_counter.h>
 
@@ -75,8 +76,15 @@ private:
 	void OrbTimerCallback(const uavcan::TimerEvent &event);
 	
 	static constexpr unsigned MAX_RATE_HZ                       = 100;	///< XXX make this configurable
-	static constexpr unsigned PREFLIGHT_STATE_UPDATE_RATE_HZ 	= 10;
+	static constexpr unsigned ORB_UPDATE_RATE_HZ 				= 10;
 	static constexpr unsigned UAVCAN_COMMAND_TRANSFER_PRIORITY  = 5;	///< 0..31, inclusive, 0 - highest, 31 - lowest
+
+	typedef uavcan::MethodBinder<UavcanServoController *,
+		void (UavcanServoController::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state>&)>
+		PreflightStateCbBinder;
+
+	typedef uavcan::MethodBinder<UavcanServoController *, void (UavcanServoController::*)(const uavcan::TimerEvent &)>
+		OrbTimerCbBinder;
 
 	bool isPreflightOn											= false;
 	orb_advert_t preflightStatePub 								= nullptr;
@@ -85,13 +93,13 @@ private:
 	/*
 	 * libuavcan related things
 	 */
-	uavcan::INode								                    				&_node;
-	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> 					arrayCommandPublisher;
-	uavcan::Publisher<uavcan::equipment::actuator::Command>       					commandPublisher;
-	uavcan::Subscriber<uavcan::equipment::big_one::Preflight_state, StatusCbBinder>	preflightStateSubscriber;
-	uavcan::MonotonicTime							                				previousPWMPublication;   		///< rate limiting
-	uavcan::MonotonicTime							                				previousIgnitionPublication;   	///< rate limiting
-	uavcan::TimerEventForwarder<TimerCbBinder>										orbTimer;
+	uavcan::INode								                    						&_node;
+	uavcan::Publisher<uavcan::equipment::actuator::ArrayCommand> 							arrayCommandPublisher;
+	uavcan::Publisher<uavcan::equipment::actuator::Command>       							commandPublisher;
+	uavcan::Subscriber<uavcan::equipment::big_one::Preflight_state, PreflightStateCbBinder>	preflightStateSubscriber;
+	uavcan::MonotonicTime							                						previousPWMPublication;   		///< rate limiting
+	uavcan::MonotonicTime							                						previousIgnitionPublication;   	///< rate limiting
+	uavcan::TimerEventForwarder<OrbTimerCbBinder>											orbTimer;
 
 	/*
 	 * Perf counters

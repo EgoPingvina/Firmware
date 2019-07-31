@@ -44,7 +44,9 @@
 UavcanServoController::UavcanServoController(uavcan::INode &node) :
 	_node(node),
 	arrayCommandPublisher(node),
-	commandPublisher(node)
+	commandPublisher(node),
+	preflightStateSubscriber(node),
+	orbTimer(node)
 {
 	this->arrayCommandPublisher.setPriority(UAVCAN_COMMAND_TRANSFER_PRIORITY);
 	this->commandPublisher.setPriority(UAVCAN_COMMAND_TRANSFER_PRIORITY);
@@ -85,7 +87,7 @@ int UavcanServoController::Init()
 
 
 	// preflight state subscription
-	int res = this->preflightStateSubscriber.start(StatusCbBinder(this, &UavcanEscController::PreflightStateCallback));
+	int res = this->preflightStateSubscriber.start(PreflightStateCbBinder(this, &UavcanServoController::PreflightStateCallback));
 
 	if (res < 0)
 	{
@@ -94,8 +96,8 @@ int UavcanServoController::Init()
 	}
 
 	// Preflight state will be relayed from UAVCAN bus into ORB at this rate
-	this->orbTimer.setCallback(TimerCbBinder(this, &UavcanEscController::OrbTimerCallback));
-	this->orbTimer.startPeriodic(uavcan::MonotonicDuration::fromMSec(1000 / ESC_STATUS_UPDATE_RATE_HZ));
+	this->orbTimer.setCallback(OrbTimerCbBinder(this, &UavcanServoController::OrbTimerCallback));
+	this->orbTimer.startPeriodic(uavcan::MonotonicDuration::fromMSec(1000 / ORB_UPDATE_RATE_HZ));
 
 
 
