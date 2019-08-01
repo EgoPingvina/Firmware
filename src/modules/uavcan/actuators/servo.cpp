@@ -180,12 +180,13 @@ void UavcanServoController::PreflightStateCallback(const uavcan::ReceivedDataStr
 	{
 		this->isPreflightOn = msg.status;
 
-		struct safety_s safety = {};
-		safety.safety_off = !this->isPreflightOn;
-		safety.safety_switch_available = true;
+		safety_s safety;
+		safety.timestamp 				= hrt_absolute_time();
+		safety.safety_off 				= !this->isPreflightOn;
+		safety.safety_switch_available 	= true;
 
 		if (this->preflightStatePub != nullptr)
-			(void)orb_publish(ORB_ID(safety), this->preflightStatePub, &safety);
+			orb_publish(ORB_ID(safety), this->preflightStatePub, &safety);
 		else
 			this->preflightStatePub = orb_advertise(ORB_ID(safety), &safety);
 	}
