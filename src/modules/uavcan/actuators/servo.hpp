@@ -43,7 +43,7 @@
 #include <uavcan/equipment/actuator/ArrayCommand.hpp>
 #include <uavcan/equipment/actuator/Command.hpp>
 #include <uavcan/equipment/big_one/Preflight_state.hpp>
-#include <uORB/topics/preflight_state.h>
+#include <uORB/topics/safety.h>
 #include <perf/perf_counter.h>
 
 class UavcanServoController
@@ -69,11 +69,6 @@ private:
 	 * Preflight state message reception will be reported via this callback.
 	 */
 	void PreflightStateCallback(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state> &msg);
-
-	/*
-	 * Published can messages to ORB from this callback (fixed rate) if it's needed.
-	 */
-	void OrbTimerCallback(const uavcan::TimerEvent &event);
 	
 	static constexpr unsigned MAX_RATE_HZ                       = 100;	///< XXX make this configurable
 	static constexpr unsigned ORB_UPDATE_RATE_HZ 				= 10;
@@ -82,9 +77,6 @@ private:
 	typedef uavcan::MethodBinder<UavcanServoController *,
 		void (UavcanServoController::*)(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state>&)>
 		PreflightStateCbBinder;
-
-	typedef uavcan::MethodBinder<UavcanServoController *, void (UavcanServoController::*)(const uavcan::TimerEvent &)>
-		OrbTimerCbBinder;
 
 	bool isPreflightOn											= false;
 	orb_advert_t preflightStatePub 								= nullptr;
@@ -99,7 +91,6 @@ private:
 	uavcan::Subscriber<uavcan::equipment::big_one::Preflight_state, PreflightStateCbBinder>	preflightStateSubscriber;
 	uavcan::MonotonicTime							                						previousPWMPublication;   		///< rate limiting
 	uavcan::MonotonicTime							                						previousIgnitionPublication;   	///< rate limiting
-	uavcan::TimerEventForwarder<OrbTimerCbBinder>											orbTimer;
 
 	/*
 	 * Perf counters

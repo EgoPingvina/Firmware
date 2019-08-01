@@ -82,7 +82,6 @@ set(msg_files
 	position_setpoint.msg
 	position_setpoint_triplet.msg
 	power_button_state.msg
-	preflight_state.msg
 	pwm_input.msg
 	qshell_req.msg
 	rate_ctrl_status.msg

@@ -45,8 +45,7 @@ UavcanServoController::UavcanServoController(uavcan::INode &node) :
 	_node(node),
 	arrayCommandPublisher(node),
 	commandPublisher(node),
-	preflightStateSubscriber(node),
-	orbTimer(node)
+	preflightStateSubscriber(node)
 {
 	this->arrayCommandPublisher.setPriority(UAVCAN_COMMAND_TRANSFER_PRIORITY);
 	this->commandPublisher.setPriority(UAVCAN_COMMAND_TRANSFER_PRIORITY);
@@ -94,12 +93,6 @@ int UavcanServoController::Init()
 		warnx("Preflight state sub failed %i", res);
 		return res;
 	}
-
-	// Preflight state will be relayed from UAVCAN bus into ORB at this rate
-	this->orbTimer.setCallback(OrbTimerCbBinder(this, &UavcanServoController::OrbTimerCallback));
-	this->orbTimer.startPeriodic(uavcan::MonotonicDuration::fromMSec(1000 / ORB_UPDATE_RATE_HZ));
-
-
 
 	return 0;
 }
@@ -183,13 +176,17 @@ void UavcanServoController::UpdateIgnition(bool isWork)
 
 void UavcanServoController::PreflightStateCallback(const uavcan::ReceivedDataStructure<uavcan::equipment::big_one::Preflight_state> &msg)
 {
-	this->isPreflightOn = msg.status;
-}
+	if(this->isPreflightOn != msg.status)
+	{
+		this->isPreflightOn = msg.status;
 
-void UavcanServoController::OrbTimerCallback(const uavcan::TimerEvent &event)
-{
-	if (this->preflightStatePub != nullptr)
-		(void)orb_publish(ORB_ID(preflight_state), this->preflightStatePub, &this->isPreflightOn);
-	else
-		this->preflightStatePub = orb_advertise(ORB_ID(preflight_state), &this->isPreflightOn);
+		struct safety_s safety = {};
+		safety.safety_off = !this->isPreflightOn;
+		safety.safety_switch_available = true;
+
+		if (this->preflightStatePub != nullptr)
+			(void)orb_publish(ORB_ID(safety), this->preflightStatePub, &safety);
+		else
+			this->preflightStatePub = orb_advertise(ORB_ID(safety), &safety);
+	}
 }
