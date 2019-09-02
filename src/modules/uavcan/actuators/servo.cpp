@@ -184,6 +184,8 @@ void UavcanServoController::PreflightStateCallback(const uavcan::ReceivedDataStr
 		safety.timestamp 				= hrt_absolute_time();
 		safety.safety_off 				= !this->isPreflightOn;
 		safety.safety_switch_available 	= true;
+		safety.override_available 		= false;
+		safety.override_enabled 		= false;
 
 		if (this->preflightStatePub != nullptr)
 			orb_publish(ORB_ID(safety), this->preflightStatePub, &safety);
