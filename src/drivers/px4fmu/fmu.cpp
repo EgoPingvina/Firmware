@@ -206,6 +206,7 @@ private:
 	int		_safety_sub;
 
 	orb_advert_t	_outputs_pub;
+	orb_advert_t	_servo_outputs_pub;
 	unsigned	_num_outputs;
 	int		_class_instance;
 
@@ -239,8 +240,6 @@ private:
 	bool		_safety_disabled;
 	orb_advert_t	_to_safety;
 	orb_advert_t    _to_mixer_status; 	///< mixer status flags
-
-	orb_advert_t	_servo_outputs_pub;
 
 	float _mot_t_max;	///< maximum rise time for motor (slew rate limiting)
 	float _thr_mdl_fac;	///< thrust to pwm modelling factor

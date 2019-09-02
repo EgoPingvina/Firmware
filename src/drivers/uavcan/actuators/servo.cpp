@@ -51,7 +51,7 @@ UavcanServoController::UavcanServoController(uavcan::INode &node) :
 
 	if (_perfcnt_invalid_input == nullptr)
 		errx(1, "uavcan: couldn't allocate _perfcnt_invalid_input");
-    else if (_perfcnt_scaling_error == nullptr)
+    	else if (_perfcnt_scaling_error == nullptr)
 		errx(1, "uavcan: couldn't allocate _perfcnt_scaling_error");
 }
 
@@ -66,21 +66,21 @@ int UavcanServoController::Init()
 	auto isOk = 0;
 
 	/*
-     * We defined two data types, but only one of them has a default Data Type ID (DTID):
-     *  - sirius_cybernetics_corporation.GetCurrentTime               - default DTID 242
-     *  - sirius_cybernetics_corporation.PerformLinearLeastSquaresFit - default DTID is not set
-     * The first one can be used as is; the second one needs to be registered first.
-     */
-    isOk =
-        uavcan::GlobalDataTypeRegistry::instance().registerDataType<uavcan::equipment::actuator::Command>(1012); // DTID = 1012
+	* We defined two data types, but only one of them has a default Data Type ID (DTID):
+	*  - sirius_cybernetics_corporation.GetCurrentTime               - default DTID 242
+	*  - sirius_cybernetics_corporation.PerformLinearLeastSquaresFit - default DTID is not set
+	* The first one can be used as is; the second one needs to be registered first.
+	*/
+	isOk =
+		uavcan::GlobalDataTypeRegistry::instance().registerDataType<uavcan::equipment::actuator::Command>(1012); // DTID = 1012
 
 	/*
 	 * Possible reasons for a failure:
 	 * - Data type name or ID is not unique
 	 * - Data Type Registry has been frozen and can't be modified anymore
 	 */
-    if (isOk != uavcan::GlobalDataTypeRegistry::RegistrationResultOk)
-        errx(1, "Failed to register the data type: " + isOk);
+	if (isOk != uavcan::GlobalDataTypeRegistry::RegistrationResultOk)
+        	errx(1, "Failed to register the data type: %d", isOk);
 
 	return isOk;
 }
@@ -88,8 +88,8 @@ int UavcanServoController::Init()
 void UavcanServoController::UpdateOutputs(float *outputs, unsigned num_outputs)
 {
 	if ((outputs == nullptr)
-        || (num_outputs > uavcan::equipment::actuator::ArrayCommand::FieldTypes::commands::MaxSize))
-    {
+        	|| (num_outputs > uavcan::equipment::actuator::ArrayCommand::FieldTypes::commands::MaxSize))
+    	{
 		perf_count(_perfcnt_invalid_input);
 		return;
 	}
@@ -112,27 +112,27 @@ void UavcanServoController::UpdateOutputs(float *outputs, unsigned num_outputs)
 	static const float cmd_max  = 2000.0F;
 	static const float cmd_min  = 1000.0F;
 
-    for (unsigned i = 0; i < num_outputs; i++)
-    {
-        // trim negative values back to minimum
-        if (outputs[i] < cmd_min)
-        {
-            outputs[i] = cmd_min;
-            perf_count(_perfcnt_scaling_error);
-        }
+    	for (unsigned i = 0; i < num_outputs; i++)
+    	{
+    	    // trim negative values back to minimum
+    	    if (outputs[i] < cmd_min)
+    	    {
+    	        outputs[i] = cmd_min;
+    	        perf_count(_perfcnt_scaling_error);
+    	    }
 
-        if (outputs[i] > cmd_max)
-        {
-            outputs[i] = cmd_max;
-            perf_count(_perfcnt_scaling_error);
-        }
+    	    if (outputs[i] > cmd_max)
+    	    {
+    	        outputs[i] = cmd_max;
+    	        perf_count(_perfcnt_scaling_error);
+    	    }
 
-		uavcan::equipment::actuator::Command data;
-		data.actuator_id     = i;
-		data.command_value   = static_cast<int>(outputs[i]);
-		data.command_type 	 = (uint8_t)Commands::PWM;
-		message.commands.push_back(data);
-    }
+			uavcan::equipment::actuator::Command data;
+			data.actuator_id     	= i;
+			data.command_value   	= static_cast<int>(outputs[i]);
+			data.command_type 	= (uint8_t)Commands::PWM;
+			message.commands.push_back(data);
+    	}
 
 	/*
 	 * Publish the command message to the bus
