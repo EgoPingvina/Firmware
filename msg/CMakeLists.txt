@@ -108,6 +108,7 @@ set(msg_files
 	sensor_preflight.msg
 	sensor_selection.msg
 	servorail_status.msg
+	servo_outputs.msg
 	subsystem_info.msg
 	system_power.msg
 	task_stack_info.msg
@@ -118,6 +119,8 @@ set(msg_files
 	trajectory_waypoint.msg
 	transponder_report.msg
 	tune_control.msg
+	turn_off_pusher_on_landing.msg
+	turn_off_pusher_on_landing_manual.msg
 	uavcan_parameter_request.msg
 	uavcan_parameter_value.msg
 	ulog_stream.msg

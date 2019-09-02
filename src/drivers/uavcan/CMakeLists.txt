@@ -87,6 +87,7 @@ px4_add_module(
 		# Actuators
 		actuators/esc.cpp
 		actuators/hardpoint.cpp
+		actuators/servo.cpp
 
 		# Sensors
 		sensors/sensor_bridge.cpp
