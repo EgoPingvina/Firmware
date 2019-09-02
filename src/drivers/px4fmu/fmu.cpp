@@ -64,6 +64,7 @@
 #include <uORB/topics/multirotor_motor_limits.h>
 #include <uORB/topics/parameter_update.h>
 #include <uORB/topics/safety.h>
+#include <uORB/topics/servo_outputs.h>
 
 #define SCHEDULE_INTERVAL	2000	/**< The schedule interval in usec (500 Hz) */
 
@@ -236,8 +237,10 @@ private:
 	bool		_safety_off;			///< State of the safety button from the subscribed safety topic
 	bool		_safety_btn_off;		///< State of the safety button read from the HW button
 	bool		_safety_disabled;
-	orb_advert_t		_to_safety;
-	orb_advert_t      _to_mixer_status; 	///< mixer status flags
+	orb_advert_t	_to_safety;
+	orb_advert_t    _to_mixer_status; 	///< mixer status flags
+
+	orb_advert_t	_servo_outputs_pub;
 
 	float _mot_t_max;	///< maximum rise time for motor (slew rate limiting)
 	float _thr_mdl_fac;	///< thrust to pwm modelling factor
@@ -302,6 +305,7 @@ PX4FMU::PX4FMU(bool run_as_task) :
 	_param_sub(-1),
 	_safety_sub(-1),
 	_outputs_pub(nullptr),
+	_servo_outputs_pub(nullptr),
 	_num_outputs(0),
 	_class_instance(0),
 	_throttle_armed(false),
@@ -374,6 +378,8 @@ PX4FMU::~PX4FMU()
 	orb_unadvertise(_outputs_pub);
 	orb_unadvertise(_to_safety);
 	orb_unadvertise(_to_mixer_status);
+
+	orb_unadvertise(_servo_outputs_pub);
 
 	/* make sure servos are off */
 	up_pwm_servo_deinit();
@@ -1242,12 +1248,18 @@ PX4FMU::cycle()
 				actuator_outputs.timestamp = hrt_absolute_time();
 				actuator_outputs.noutputs = mixed_num_outputs;
 
+				servo_outputs_s servo_outputs = {};
+				servo_outputs.timestamp = hrt_absolute_time();
+				servo_outputs.noutputs = mixed_num_outputs;
+
 				// zero unused outputs
 				for (size_t i = 0; i < mixed_num_outputs; ++i) {
 					actuator_outputs.output[i] = pwm_limited[i];
+					servo_outputs.output[i] = pwm_limited[i];
 				}
 
 				orb_publish_auto(ORB_ID(actuator_outputs), &_outputs_pub, &actuator_outputs, &_class_instance, ORB_PRIO_DEFAULT);
+				orb_publish_auto(ORB_ID(servo_outputs), &_servo_outputs_pub, &servo_outputs, &_class_instance, ORB_PRIO_DEFAULT);
 
 				/* publish mixer status */
 				MultirotorMixer::saturation_status saturation_status;
