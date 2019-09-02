@@ -61,9 +61,13 @@
 #include <uORB/topics/actuator_armed.h>
 #include <uORB/topics/test_motor.h>
 #include <uORB/topics/actuator_direct.h>
+#include <uORB/topics/servo_outputs.h>
+#include <uORB/topics/turn_off_pusher_on_landing.h>
+#include <uORB/topics/turn_off_pusher_on_landing_manual.h>
 
 #include "actuators/esc.hpp"
 #include "actuators/hardpoint.hpp"
+#include "actuators/servo.hpp"
 #include "sensors/sensor_bridge.hpp"
 
 #include "uavcan_servers.hpp"
@@ -170,9 +174,13 @@ private:
 	actuator_armed_s	_armed = {};			///< the arming request of the system
 	bool			_is_armed = false;		///< the arming status of the actuators on the bus
 
-	int			_test_motor_sub = -1;   ///< uORB subscription of the test_motor status
+	int			_test_motor_sub = -1;   	///< uORB subscription of the test_motor status
 	test_motor_s		_test_motor = {};
 	bool			_test_in_progress = false;
+
+	int _servo_sub = -1;
+	int _turn_off_pusher_sub 	= -1;
+	int _turn_off_pusher_manual_sub 	= -1;
 
 	unsigned		_output_count = 0;		///< number of actuators currently available
 
@@ -180,11 +188,12 @@ private:
 
 	uavcan_node::Allocator	 _pool_allocator;
 
-	uavcan::Node<>			_node;				///< library instance
+	uavcan::Node<>			_node;			///< library instance
 	pthread_mutex_t			_node_mutex;
 	px4_sem_t			_server_command_sem;
 	UavcanEscController		_esc_controller;
 	UavcanHardpointController	_hardpoint_controller;
+	UavcanServoController		_servo_controller;
 	uavcan::GlobalTimeSyncMaster	_time_sync_master;
 	uavcan::GlobalTimeSyncSlave	_time_sync_slave;
 	uavcan::NodeStatusMonitor	_node_status_monitor;
@@ -204,9 +213,11 @@ private:
 
 	int				_actuator_direct_sub = -1;   ///< uORB subscription of the actuator_direct topic
 	uint8_t				_actuator_direct_poll_fd_num = 0;
-	actuator_direct_s		_actuator_direct = {};
-
-	actuator_outputs_s		_outputs = {};
+	actuator_direct_s		_actuator_direct 	= {};
+	actuator_outputs_s 		_outputs			= {};
+	servo_outputs_s 		_servos 			= {};
+	turn_off_pusher_on_landing_s 	_turn_off_pusher = {};
+	turn_off_pusher_on_landing_manual_s 	_turn_off_pusher_manual = {};
 
 	perf_counter_t			_perf_control_latency;
 

@@ -82,6 +82,7 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 	_node_mutex(),
 	_esc_controller(_node),
 	_hardpoint_controller(_node),
+	_servo_controller(_node),
 	_time_sync_master(_node),
 	_time_sync_slave(_node),
 	_node_status_monitor(_node),
@@ -120,7 +121,6 @@ UavcanNode::UavcanNode(uavcan::ICanDriver &can_driver, uavcan::ISystemClock &sys
 
 UavcanNode::~UavcanNode()
 {
-
 	fw_server(Stop);
 
 	if (_task != -1) {
@@ -146,6 +146,9 @@ UavcanNode::~UavcanNode()
 	(void)orb_unsubscribe(_armed_sub);
 	(void)orb_unsubscribe(_test_motor_sub);
 	(void)orb_unsubscribe(_actuator_direct_sub);
+	(void)orb_unsubscribe(_servo_sub);
+	(void)orb_unsubscribe(_turn_off_pusher_sub);
+	(void)orb_unsubscribe(_turn_off_pusher_manual_sub);
 
 	// Removing the sensor bridges
 	_sensor_bridges.clear();
@@ -626,6 +629,12 @@ int UavcanNode::init(uavcan::NodeID node_id)
 	fill_node_info();
 
 	// Actuators
+	ret = _servo_controller.Init();
+
+	if (ret < 0) {
+		return ret;
+	}
+
 	ret = _esc_controller.init();
 
 	if (ret < 0) {
@@ -744,11 +753,17 @@ int UavcanNode::run()
 	// XXX figure out the output count
 	_output_count = 2;
 
-	_armed_sub = orb_subscribe(ORB_ID(actuator_armed));
-	_test_motor_sub = orb_subscribe(ORB_ID(test_motor));
-	_actuator_direct_sub = orb_subscribe(ORB_ID(actuator_direct));
+	_armed_sub 				= orb_subscribe(ORB_ID(actuator_armed));
+	_test_motor_sub	 		= orb_subscribe(ORB_ID(test_motor));
+	_actuator_direct_sub 	= orb_subscribe(ORB_ID(actuator_direct));
+	_servo_sub 				= orb_subscribe(ORB_ID(servo_outputs));
+	_turn_off_pusher_sub 	= orb_subscribe(ORB_ID(turn_off_pusher_on_landing));
+	_turn_off_pusher_manual_sub 	= orb_subscribe(ORB_ID(turn_off_pusher_on_landing_manual));
 
 	memset(&_outputs, 0, sizeof(_outputs));
+	memset(&_servos, 0, sizeof(_servos));
+	memset(&_turn_off_pusher, 0, sizeof(_turn_off_pusher));
+	memset(&_turn_off_pusher_manual, 0, sizeof(_turn_off_pusher_manual));
 
 	/*
 	 * Set up the time synchronization
@@ -851,6 +866,14 @@ int UavcanNode::run()
 
 		node_spin_once();  // Non-blocking
 
+
+		// take pwm for servo
+		bool servo_updated = false;
+		orb_check(_servo_sub, &servo_updated);
+		if (servo_updated)
+			orb_copy(ORB_ID(servo_outputs), _servo_sub, &_servos);
+
+
 		bool new_output = false;
 
 		// this would be bad...
@@ -940,6 +963,21 @@ int UavcanNode::run()
 
 			// Output to the bus
 			_esc_controller.update_outputs(_outputs.output, _outputs.noutputs);
+			_servo_controller.UpdateOutputs(_servos.output, _servos.noutputs);
+
+			bool turn_off_pusher_updated = false;
+			orb_check(_turn_off_pusher_sub, &turn_off_pusher_updated);
+			if (turn_off_pusher_updated)
+				orb_copy(ORB_ID(turn_off_pusher_on_landing), _turn_off_pusher_sub, &_turn_off_pusher);
+
+			bool turn_off_pusher_manual_updated = false;
+			orb_check(_turn_off_pusher_manual_sub, &turn_off_pusher_manual_updated);
+			if (turn_off_pusher_manual_updated)
+				orb_copy(ORB_ID(turn_off_pusher_on_landing_manual), _turn_off_pusher_manual_sub, &_turn_off_pusher_manual);
+
+			/* turn off the engine if kill swinch ON */
+			_servo_controller.UpdateIgnition(!_turn_off_pusher.turn_off_pusher_on_landing && !_turn_off_pusher_manual.turn_off_pusher_on_landing_manual && !_armed.manual_lockdown);
+
 			_outputs.timestamp = hrt_absolute_time();
 
 			// use first valid timestamp_sample for latency tracking
